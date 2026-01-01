@@ -2,18 +2,28 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/Vedant/distributed-rate-limiter/limiter/burst"
+	"github.com/Vedant/distributed-rate-limiter/middleware"
 )
 
 func main() {
-	limiter := burst.NewLimiter(3, 2*time.Second)
+	// Create burst limiter
+	limiter := burst.NewLimiter(5, 2*time.Second)
 
-	key := "user-1"
+	// Demo handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Request allowed")
+	})
 
-	for i := 1; i <= 5; i++ {
-		allowed := limiter.Allow(key)
-		fmt.Println("Request", i, "allowed:", allowed)
-	}
+	// Wrap handler with rate-limiting middleware
+	rateLimitedHandler := middleware.RateLimit(limiter)(handler)
+
+	http.Handle("/", rateLimitedHandler)
+
+	fmt.Println("Server running on :8080")
+	http.ListenAndServe(":8080", nil)
 }
+
