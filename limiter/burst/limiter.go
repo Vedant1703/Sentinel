@@ -26,26 +26,21 @@ func (l *Limiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	// Get existing timestamps
 	timestamps := l.requests[key]
+	valid := make([]time.Time, 0, len(timestamps))
 
-	// Keep only timestamps inside the window
-	valid := timestamps[:0]
 	for _, ts := range timestamps {
 		if now.Sub(ts) <= l.window {
 			valid = append(valid, ts)
 		}
 	}
 
-	// Check limit
 	if len(valid) >= l.limit {
 		l.requests[key] = valid
 		return false
 	}
 
-	// Allow request
 	valid = append(valid, now)
 	l.requests[key] = valid
 	return true
 }
-

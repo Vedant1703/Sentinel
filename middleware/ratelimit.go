@@ -1,26 +1,57 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 
-	"github.com/Vedant/distributed-rate-limiter/limiter/burst"
+	burstlimiter "github.com/Vedant/distributed-rate-limiter/limiter/burst"
+	redislimiter "github.com/Vedant/distributed-rate-limiter/limiter/redis"
 )
-func RateLimit(limiter *burst.Limiter) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			// Step 1: extract key (IP address)
-			key := r.RemoteAddr
+type RateLimitMiddleware struct {
+	burstLimiter *burstlimiter.Limiter
+	redisLimiter *redislimiter.Limiter
+	failOpen     bool
+}
 
-			// Step 2: check burst limiter
-			if !limiter.Allow(key) {
-				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte("Too Many Requests"))
+func NewRateLimitMiddleware(
+	burst *burstlimiter.Limiter,
+	redis *redislimiter.Limiter,
+	failOpen bool,
+) *RateLimitMiddleware {
+	return &RateLimitMiddleware{
+		burstLimiter: burst,
+		redisLimiter: redis,
+		failOpen:     failOpen,
+	}
+}
+
+func (rl *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+
+		key := "ip:" + ip
+
+		if !rl.burstLimiter.Allow(key) {
+			http.Error(w, "rate limit exceeded (burst)", http.StatusTooManyRequests)
+			return
+		}
+
+		allowed, err := rl.redisLimiter.Allow(key)
+		if err != nil {
+			if !rl.failOpen {
+				http.Error(w, "rate limit unavailable", http.StatusServiceUnavailable)
 				return
 			}
+		} else if !allowed {
+			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
 
-			// Step 3: request allowed → continue
-			next.ServeHTTP(w, r)
-		})
-	}
+		next.ServeHTTP(w, r)
+	})
 }
