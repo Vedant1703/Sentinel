@@ -2,18 +2,18 @@ package middleware
 
 import (
 	"log"
-	"net"
 	"net/http"
 
 	"github.com/Vedant/distributed-rate-limiter/config"
+	"github.com/Vedant/distributed-rate-limiter/limiter"
 	burstlimiter "github.com/Vedant/distributed-rate-limiter/limiter/burst"
 	redislimiter "github.com/Vedant/distributed-rate-limiter/limiter/redis"
 	"github.com/Vedant/distributed-rate-limiter/metrics"
 )
 
 type RateLimitMiddleware struct {
-	burstLimiter *burstlimiter.Limiter
-	redisLimiters map[string]*redislimiter.Limiter
+	burstLimiter  limiter.RateLimiter
+	redisLimiters map[string]limiter.RateLimiter
 	cfg           config.Config
 	failOpen      bool
 }
@@ -24,7 +24,7 @@ func NewRateLimitMiddleware(
 	failOpen bool,
 ) *RateLimitMiddleware {
 
-	redisLimiters := make(map[string]*redislimiter.Limiter)
+	redisLimiters := make(map[string]limiter.RateLimiter)
 
 	for route, rule := range cfg.Routes {
 		redisLimiters[route] = redislimiter.NewLimiter(rule.Limit, rule.Window)
@@ -37,7 +37,7 @@ func NewRateLimitMiddleware(
 	)
 
 	return &RateLimitMiddleware{
-		burstLimiter: burst,
+		burstLimiter:  burst,
 		redisLimiters: redisLimiters,
 		cfg:           cfg,
 		failOpen:      failOpen,
@@ -47,16 +47,19 @@ func NewRateLimitMiddleware(
 func (rl *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		ip, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			ip = r.RemoteAddr
-		}
-
-		key := "ip:" + ip
+		key := ExtractKey(r)
 		path := r.URL.Path
 
 		// 1️⃣ Burst limiter
-		if !rl.burstLimiter.Allow(key) {
+		allowedBurst, err := rl.burstLimiter.Allow(key)
+		if err != nil {
+			log.Printf("BURST ERROR key=%s path=%s err=%v\n", key, path, err)
+			metrics.IncErrors()
+			if !rl.failOpen {
+				http.Error(w, "rate limiter unavailable", http.StatusServiceUnavailable)
+				return
+			}
+		} else if !allowedBurst {
 			log.Printf("BLOCKED burst key=%s path=%s\n", key, path)
 			metrics.IncBlocked()
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)

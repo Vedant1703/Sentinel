@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Vedant/distributed-rate-limiter/metrics"
+
 	"github.com/Vedant/distributed-rate-limiter/config"
 	burstlimiter "github.com/Vedant/distributed-rate-limiter/limiter/burst"
 	"github.com/Vedant/distributed-rate-limiter/middleware"
@@ -22,7 +24,7 @@ func main() {
 			"/search": {Limit: 50, Window: time.Minute},
 		},
 		Default: config.Rule{
-			Limit: 100,
+			Limit:  100,
 			Window: time.Minute,
 		},
 	}
@@ -36,8 +38,8 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Request allowed")
 	})
-
 	http.Handle("/", rateLimiter.Middleware(handler))
+	http.Handle("/metrics", metrics.Handler())
 
 	fmt.Println("Server running on :8080")
 	http.ListenAndServe(":8080", nil)

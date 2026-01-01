@@ -19,10 +19,12 @@ func NewLimiter(limit int, window time.Duration) *Limiter {
 		window:   window,
 	}
 }
+func (l *Limiter) Allow(key string) (bool, error) {
+	return l.allow(key), nil
+}
 
-func (l *Limiter) Allow(key string) bool {
+func (l *Limiter) allow(key string) bool {	
 	now := time.Now()
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
