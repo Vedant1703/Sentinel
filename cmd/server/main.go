@@ -5,36 +5,40 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Vedant/distributed-rate-limiter/config"
 	burstlimiter "github.com/Vedant/distributed-rate-limiter/limiter/burst"
-	redislimiter "github.com/Vedant/distributed-rate-limiter/limiter/redis"
 	"github.com/Vedant/distributed-rate-limiter/middleware"
 )
 
 func main() {
-	burstLimiter := burstlimiter.NewLimiter(
-		20,
-		50*time.Millisecond,
-	)
 
-	redisLimiter := redislimiter.NewLimiter(
-		10,
-		60*time.Second,
-	)
+	// Burst limiter (local)
+	burstLimiter := burstlimiter.NewLimiter(20, 50*time.Millisecond)
 
-	rateLimitMiddleware := middleware.NewRateLimitMiddleware(
+	// Configurable per-route rules
+	cfg := config.Config{
+		Routes: map[string]config.Rule{
+			"/login":  {Limit: 5, Window: time.Minute},
+			"/search": {Limit: 50, Window: time.Minute},
+		},
+		Default: config.Rule{
+			Limit: 100,
+			Window: time.Minute,
+		},
+	}
+
+	rateLimiter := middleware.NewRateLimitMiddleware(
 		burstLimiter,
-		redisLimiter,
-		true,
+		cfg,
+		true, // fail-open
 	)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Request allowed")
 	})
 
-	http.Handle("/", rateLimitMiddleware.Middleware(handler))
+	http.Handle("/", rateLimiter.Middleware(handler))
 
 	fmt.Println("Server running on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
-	}
+	http.ListenAndServe(":8080", nil)
 }
