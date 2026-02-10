@@ -38,8 +38,8 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Request allowed")
 	})
-	http.Handle("/", rateLimiter.Middleware(handler))
-	http.Handle("/metrics", metrics.Handler())
+	http.Handle("/", rateLimiter.Middleware(middleware.CORSMiddleware(handler)))
+	http.Handle("/metrics", middleware.CORSMiddleware(metrics.Handler()))
 
 	fmt.Println("Server running on :8080")
 	http.ListenAndServe(":8080", nil)
