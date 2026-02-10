@@ -5,12 +5,12 @@ import (
 	"net/http"
 )
 
-// func ExtractKey(r *http.Request) string {
-// 	if userID := r.Header.Get("X-User-ID"); userID != "" {
-// 		return "user:" + userID
-// 	}
-// 	return "ip:" + r.RemoteAddr
-// }
+//	func ExtractKey(r *http.Request) string {
+//		if userID := r.Header.Get("X-User-ID"); userID != "" {
+//			return "user:" + userID
+//		}
+//		return "ip:" + r.RemoteAddr
+//	}
 func ExtractKey(r *http.Request) string {
 	if userID := r.Header.Get("X-User-ID"); userID != "" {
 		return "user:" + userID
@@ -21,5 +21,5 @@ func ExtractKey(r *http.Request) string {
 		ip = r.RemoteAddr
 	}
 
-	return "ip:" + ip
+	return "ip:" + ip + ":path:" + r.URL.Path
 }
