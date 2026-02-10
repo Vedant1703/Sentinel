@@ -58,8 +58,8 @@ export default function Home() {
     <div className="min-h-screen bg-background p-8 font-sans">
       <header className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-white">Sentinel <span className="text-primary">Dashboard</span></h1>
-          <p className="text-gray-400">Distributed Rate Limiting System</p>
+          <h1 className="text-4xl font-bold tracking-tight text-white">Dashboard <span className="text-primary">Overview</span></h1>
+          <p className="text-gray-400">Real-time system metrics</p>
         </div>
         <div className={`flex items-center gap-2 rounded-full px-4 py-1 text-sm font-medium ${isConnected ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"}`}>
           <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-primary animate-pulse" : "bg-danger"}`} />
