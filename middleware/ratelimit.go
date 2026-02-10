@@ -3,6 +3,8 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/Vedant/distributed-rate-limiter/config"
 	"github.com/Vedant/distributed-rate-limiter/limiter"
@@ -12,6 +14,7 @@ import (
 )
 
 type RateLimitMiddleware struct {
+	mu            sync.RWMutex
 	burstLimiter  limiter.RateLimiter
 	redisLimiters map[string]limiter.RateLimiter
 	cfg           config.Config
@@ -44,6 +47,15 @@ func NewRateLimitMiddleware(
 	}
 }
 
+// UpdateConfig dynamically updates the rate limit for a specific route
+func (rl *RateLimitMiddleware) UpdateConfig(path string, limit int, window time.Duration) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rl.redisLimiters[path] = redislimiter.NewLimiter(limit, window)
+	log.Printf("UPDATED config for path=%s: limit=%d window=%v\n", path, limit, window)
+}
+
 func (rl *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -67,10 +79,12 @@ func (rl *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		// 2️⃣ Choose route limiter
+		rl.mu.RLock()
 		limiter, ok := rl.redisLimiters[path]
 		if !ok {
 			limiter = rl.redisLimiters["default"]
 		}
+		rl.mu.RUnlock()
 
 		allowed, err := limiter.Allow(key)
 		if err != nil {

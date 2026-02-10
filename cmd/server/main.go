@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -40,6 +41,29 @@ func main() {
 	})
 	http.Handle("/", rateLimiter.Middleware(middleware.CORSMiddleware(handler)))
 	http.Handle("/metrics", middleware.CORSMiddleware(metrics.Handler()))
+
+	// Dynamic Config Endpoint
+	http.Handle("/api/config", middleware.CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			Path   string `json:"path"`
+			Limit  int    `json:"limit"`
+			Window int    `json:"window"` // seconds
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		rateLimiter.UpdateConfig(req.Path, req.Limit, time.Duration(req.Window)*time.Second)
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Updated %s: %d reqs / %ds", req.Path, req.Limit, req.Window)
+	})))
 
 	fmt.Println("Server running on :8080")
 	http.ListenAndServe(":8080", nil)
