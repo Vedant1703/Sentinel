@@ -39,7 +39,7 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Request allowed")
 	})
-	http.Handle("/", rateLimiter.Middleware(middleware.CORSMiddleware(handler)))
+	http.Handle("/", middleware.CORSMiddleware(rateLimiter.Middleware(handler)))
 	http.Handle("/metrics", middleware.CORSMiddleware(metrics.Handler()))
 
 	// Dynamic Config Endpoint

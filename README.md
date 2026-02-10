@@ -1,13 +1,12 @@
 # 🛡️ Sentinel: Distributed Global Rate Limiter
 
-![Sentinel Dashboard](https://media.discordapp.net/attachments/1067207094247264327/1169046635907403816/sentinel-dashboard.png?ex=654d5d9a&is=653ae89a&hm=2a8e8f8c2e6f4d2b9d2e7d7a9f7e8a9c8b7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f&)
-*(Note: Replace with actual screenshot of your new frontend)*
+![alt text](image.png)
 
 **Sentinel** is a high-performance, distributed rate-limiting system designed to protect microservices from traffic spikes, abuse, and DDoS attacks. Unlike traditional in-memory limiters, Sentinel synchronizes state across multiple instances using Redis, ensuring **global consistency** for your rate limits.
 
 ---
 
-## ⚡ Performance & Scale (The Numbers)
+## ⚡ Performance & Scale
 
 Sentinel is built for high-scale production environments.
 
