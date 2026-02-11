@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,9 +18,26 @@ type Limiter struct {
 }
 
 func NewLimiter(limit int, window time.Duration) *Limiter {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
+
+	var opts *redis.Options
+	var err error
+
+	if strings.HasPrefix(addr, "redis://") || strings.HasPrefix(addr, "rediss://") {
+		opts, err = redis.ParseURL(addr)
+		if err != nil {
+			log.Fatalf("invalid redis url: %v", err)
+		}
+	} else {
+		opts = &redis.Options{
+			Addr: addr,
+		}
+	}
+
+	rdb := redis.NewClient(opts)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

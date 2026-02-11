@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. Redis Store
+  redis:
+    image: redis:alpine
+    container_name: sentinel-redis
+    restart: always
+    ports:
+      - "6379:6379" # Exposed for debugging (optional)
+
+  # 2. Go Backend
+  backend:
+    container_name: sentinel-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    restart: always
+
+  # 3. Next.js Frontend
+  frontend:
+    container_name: sentinel-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # URL where the browser can reach the backend
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always

@@ -44,7 +44,7 @@ export default function Playground() {
   const fireRequest = async () => {
     try {
       // Use a specific path so we can rate limit it specifically
-      const res = await fetch("http://localhost:8080/playground");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/playground`);
       if (res.ok) {
         addLog(200);
       } else {
